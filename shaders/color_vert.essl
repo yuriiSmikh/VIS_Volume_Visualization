@@ -2,18 +2,10 @@
 #version 330 es
 #endif
 
-// this go directly to fragment shader ?
-varying vec3 rayOrigin;
-varying vec3 rayDirection;
-
+varying vec3 position_obj;
 
 void main() {
 
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1);
-
-    rayOrigin = (inverse(modelMatrix) * vec4(cameraPosition, 1)).xyz;
-
-    // vertex pos - camera pos
-    rayDirection = normalize(position - rayOrigin);
-
+    position_obj = position;
 }

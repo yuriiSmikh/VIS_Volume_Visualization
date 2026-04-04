@@ -21,6 +21,7 @@ let container = null;
 let volume = null;
 let fileInput = null;
 let testShader = null;
+let testMesh = null;
 
 /**
  * Load all data and initialize UI here.
@@ -89,7 +90,7 @@ async function resetVis() {
 
   const testMaterial = testShader.material;
   await testShader.load(); // this function needs to be called explicitly, and only works within an async function!
-  const testMesh = new THREE.Mesh(testCube, testMaterial);
+  testMesh = new THREE.Mesh(testCube, testMaterial);
   scene.add(testMesh);
 
   // our camera orbits around an object centered at (0,0,0)
@@ -128,6 +129,13 @@ function createVolumeTexture(volume) {
  */
 function paint() {
   if (volume) {
+    //NOTE: model matrix and inverse() aren't available in fragment shaders,
+    // and we can't calculate them in the vertex shader either because they would get interpolated incorrectly.
+    testShader.setUniform(
+      "inverseModelMat",
+      testMesh.matrixWorld.clone().invert(),
+    );
+
     renderer.render(scene, camera);
   }
 }
