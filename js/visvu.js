@@ -39,8 +39,6 @@ function init() {
     fileInput = document.getElementById("upload");
     fileInput.addEventListener('change', readFile);
 
-    // dummy shader gets a color as input
-    testShader = new TestShader([255.0, 255.0, 0.0]);
 }
 
 /**
@@ -69,12 +67,21 @@ async function resetVis(){
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera( 75, canvasWidth / canvasHeight, 0.1, 1000 );
 
+
+    // dummy shader gets a color as input
+    testShader = new TestShader2(createVolumeTexture(volume), 0.1, 0.1, new THREE.Vector3(volume.width, volume.height, volume.depth));
+
     // dummy scene: we render a box and attach our color test shader as material
     const testCube = new THREE.BoxGeometry(volume.width, volume.height, volume.depth);
+
     const testMaterial = testShader.material;
     await testShader.load(); // this function needs to be called explicitly, and only works within an async function!
     const testMesh = new THREE.Mesh(testCube, testMaterial);
     scene.add(testMesh);
+
+
+
+
 
     // our camera orbits around an object centered at (0,0,0)
     orbitCamera = new OrbitCamera(camera, new THREE.Vector3(0,0,0), 2*volume.max, renderer.domElement);
@@ -82,6 +89,26 @@ async function resetVis(){
     // init paint loop
     requestAnimationFrame(paint);
 }
+
+function createVolumeTexture(volume) {
+    const texture = new THREE.Data3DTexture(
+        volume.voxels,
+        volume.width,
+        volume.height,
+        volume.depth
+    )
+    texture.minFilter = THREE.NearestFilter;
+    texture.maxFilter = THREE.NearestFilter;
+
+    texture.format = THREE.RedFormat;
+    texture.type = THREE.UnsignedShortType;
+    texture.unpackAlignment = 1;
+
+    texture.needsUpdate = true
+
+    return texture
+}
+
 
 /**
  * Render the scene and update all necessary shader information.
