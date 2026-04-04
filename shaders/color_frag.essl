@@ -40,21 +40,20 @@ void main() {
     // entry exit points
     float tNear;
     float tFar;
-    intersectRayAABB(-volumeSize / 2.0, volumeSize / 2.0, tNear, tFar, dir);
+    vec3 boxMin = -volumeSize / 2.0;
+    vec3 boxMax = volumeSize / 2.0;
+    intersectRayAABB(boxMin, boxMax, tNear, tFar, dir);
 
     // loop
     float maxDensity = 0.0;
 
-    vec3 entryPosition = rayOrigin + dir * tNear;
-    vec3 endPosition = rayOrigin + dir * tFar;
-    vec3 startToEnd = endPosition - entryPosition;
-
     int steps = 64;
     for (int i = 0; i < steps; i++) {
 
-        vec3 samplePosition = entryPosition + startToEnd * float(i)/float(steps);
-
-        float value = texture(dataTexture, (samplePosition/volumeSize) +0.5).r;
+        float t = float(i)/float(steps);
+        vec3 samplePosition = rayOrigin + rayDirection * mix(tNear, tFar, t);
+        vec3 uvw = (samplePosition - boxMin) / (boxMax - boxMin);
+        float value = texture(dataTexture, uvw).r;
 
         if (value > maxDensity) {
             maxDensity = value;
@@ -62,8 +61,6 @@ void main() {
     }
 
     //fragColor = vec4((samplePosition/volumeSize) +0.5, 1.0);
-
     //fragColor = vec4(texture(dataTexture, vec3(0.5, 0.5, 0.5)).r);
-
-    //fragColor = vec4(maxDensity, maxDensity, maxDensity, 1.0);
+    fragColor = vec4(maxDensity, maxDensity, maxDensity, 1.0);
 }
