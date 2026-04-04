@@ -33,6 +33,14 @@ bool intersectRayAABB(vec3 boxMin, vec3 boxMax, out float tNear, out float tFar,
     return tFar >= max(tNear, 0.0);
 }
 
+float sampleAtT(float t, float tNear, float tFar, vec3 rayDirection, vec3 rayOrigin)
+{
+    vec3 samplePosition = rayOrigin + rayDirection * t;
+    vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
+    float value = texture(dataTexture, uvw).r;
+    return value;
+}
+
 void main() {
 
     vec3 rayOrigin = (inverseModelMat * vec4(cameraPosition, 1.0)).xyz;
@@ -49,21 +57,46 @@ void main() {
         discard;
     }
 
-    // loop
-    float maxDensity = 0.0;
 
-    int steps = 64;
-    for (int i = 0; i < steps; i++) {
 
-        float t = float(i)/float(steps);
-        vec3 samplePosition = rayOrigin + rayDirection * mix(tNear, tFar, t);
-        vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
-        float value = texture(dataTexture, uvw).r;
+    // constants
+    float isoValue = 0.5; // range[0, 1.0]
+    float startingStep = 0.1; //Check the perfomance
+    float hitThreshold = 0.1;
 
-        if (value > maxDensity) {
-            maxDensity = value;
+    bool hitFlag = false;
+    int maxIterations = 64;
+    float step = startingStep;
+    float currT = tNear;
+    float dif = 0.0;
+    float lastDif = 0.0;
+    float sampleValue = 0.0;
+
+    // init values;
+    dif = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin) - isoValue;
+    lastDif = dif;
+
+    for(int i = 0; i < maxIterations; i++) {
+        if(currT > tFar) discard;
+        if(abs(dif) < hitThreshold){
+            hitFlag = true;
+            sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
+            break;
         }
-    }
 
-    fragColor = vec4(maxDensity, maxDensity, maxDensity, 1.0);
+        currT += step;
+        sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
+        dif = sampleValue - isoValue;
+
+        if (sign(dif) != sign(lastDif)){
+            // for now just return
+            break;
+
+            // overstepped: homing in.
+            //step /= 2;
+            //currT -= step;
+        }
+        lastDif = dif;
+    }
+    fragColor = vec4(sampleValue, sampleValue, sampleValue, 1.0);
 }
