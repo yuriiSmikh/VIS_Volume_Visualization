@@ -18,7 +18,7 @@ varying vec3 rayDirection;
 
 bool intersectRayAABB(vec3 boxMin, vec3 boxMax, out float tNear, out float tFar, vec3 dir)
 {
-    vec3 invDir = 1.0 / rayDirection;
+    vec3 invDir = 1.0 / dir;
 
     vec3 t0 = (boxMin - rayOrigin) * invDir;
     vec3 t1 = (boxMax - rayOrigin) * invDir;
@@ -54,14 +54,16 @@ void main() {
 
         vec3 samplePosition = entryPosition + startToEnd * float(i)/float(steps);
 
-        float value = texture(dataTexture, (samplePosition/volumeSize) +0.5).x;
+        float value = texture(dataTexture, (samplePosition/volumeSize) +0.5).r;
 
         if (value > maxDensity) {
             maxDensity = value;
         }
-
-
     }
 
-    fragColor = vec4(maxDensity, maxDensity, maxDensity, 1.0);
+    //fragColor = vec4((samplePosition/volumeSize) +0.5, 1.0);
+
+    //fragColor = vec4(texture(dataTexture, vec3(0.5, 0.5, 0.5)).r);
+
+    //fragColor = vec4(maxDensity, maxDensity, maxDensity, 1.0);
 }
