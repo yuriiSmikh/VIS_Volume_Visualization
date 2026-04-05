@@ -8,6 +8,7 @@ precision highp sampler3D;
 
 out vec4 fragColor;
 
+uniform float isoValue;
 uniform sampler3D dataTexture;
 uniform vec3 volumeSize; // (2,2,2) -> (-1,-1,-1) and (1,1,1)
 uniform float threshold;
@@ -73,7 +74,6 @@ void main() {
     }
 
     // constants
-    const float isoValue = 0.3; // range[0, 1.0]
     const int maxSearchSteps = 256;
     const int refinementSteps = 6;
 
