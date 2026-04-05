@@ -41,6 +41,21 @@ float sampleAtT(float t, float tNear, float tFar, vec3 rayDirection, vec3 rayOri
     return value;
 }
 
+vec3 gradient(vec3 uvw)
+{
+    // calculating the volume gradient in given point
+    // given that the input point will lie around the edge of the density values,
+    // the volume gradient will behave similarly to a normal vector and can be used for lighting.
+
+    vec3 h = vec3(1, 1, 1) / volumeSize;
+
+    float dx = texture(dataTexture, uvw + vec3(h.x,0,0)).r - texture(dataTexture, uvw - vec3(h.x,0,0)).r;
+    float dy = texture(dataTexture, uvw + vec3(0,h.y,0)).r - texture(dataTexture, uvw - vec3(0,h.y,0)).r;
+    float dz = texture(dataTexture, uvw + vec3(0,0,h.z)).r - texture(dataTexture, uvw - vec3(0,0,h.z)).r;
+
+    return normalize(vec3(dx, dy, dz));
+}
+
 void main() {
 
     vec3 rayOrigin = (inverseModelMat * vec4(cameraPosition, 1.0)).xyz;
@@ -59,8 +74,8 @@ void main() {
 
     // constants
     const float isoValue = 0.3; // range[0, 1.0]
-    const int maxSearchSteps = 512;
-    const int refinementSteps = 8;
+    const int maxSearchSteps = 256;
+    const int refinementSteps = 6;
 
     float step = (tFar - tNear) / float(maxSearchSteps);
     float currT = tNear;
@@ -76,7 +91,7 @@ void main() {
 
     for(int i = 0; i < maxSearchSteps; i++)
     {
-        if(currT > tFar) discard;
+        if(currT > tFar) break;
         currT += step;
         sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
         dif = sampleValue - isoValue;
@@ -86,6 +101,7 @@ void main() {
             // walked past the isoValue, refining
             float tMin = currT - step;
             float tMax = currT;
+            currT = 0.5 * (tMin + tMax);
             for (int j = 0; j < refinementSteps; j++)
             {
                 currT = 0.5 * (tMin + tMax);
@@ -109,7 +125,11 @@ void main() {
     if (!hit) discard;
 
     vec3 samplePosition = rayOrigin + rayDirection * currT;
-    vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
 
-    fragColor = vec4(uvw, 1.0);
+    vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
+    vec3 normal = gradient(uvw);
+
+    float light = dot(normal, normalize(vec3(0.71, 0.5, 0.22)));
+
+    fragColor = vec4(light, light, light, 1.0);
 }
