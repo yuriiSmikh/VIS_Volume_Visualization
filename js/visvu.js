@@ -23,6 +23,8 @@ let fileInput = null;
 let testShader = null;
 let testMesh = null;
 
+let isoValue = 0.0;
+
 /**
  * Load all data and initialize UI here.
  */
@@ -82,6 +84,7 @@ async function resetVis() {
     0.1,
     0.1,
     new THREE.Vector3(volume.width, volume.height, volume.depth),
+      isoValue
   );
 
   // dummy scene: we render a box and attach our color test shader as material
@@ -161,15 +164,14 @@ function drawHist(data) {
   // scales
   const scaleX = d3.scaleLinear()
       .domain([0, 1])
-      .range([margin.left, width - margin.right]);
+      .range([margin.left, width - margin.right])
+      .clamp(true); // hard stop
 
   const scaleY = d3.scaleLinear()
       .domain([0, 1])
       .range([height - margin.bottom, margin.top]);
 
   const scaleHeight = d3.scaleLinear([0, d3.max(bins, d => d.length)], [height - margin.bottom, margin.top]) // helper to feed the frequencies
-
-  console.log(bins)
 
   // histogram itself
   svg.append("g")
@@ -189,5 +191,54 @@ function drawHist(data) {
   svg.append("g")
       .attr("transform", `translate(${margin.left}, ${0})`)
       .call(d3.axisLeft(scaleY))
+
+
+  // slider stuff
+  const slider = svg.append("g")
+      .attr("class", "slider")
+      .attr("transform", `translate(0, ${margin.top})`);
+
+// slider itself
+  slider.append("line")
+      .attr("x1", scaleX.range()[0])
+      .attr("x2", scaleX.range()[1])
+      .attr("y1", margin.top)
+      .attr("y2", margin.top)
+      .style("stroke", "#ddd")
+      .style("stroke-width", "6px")
+      .style("stroke-linecap", "round");
+
+// bigger area to not miss the slider
+  const overlay = slider.append("line")
+      .attr("x1", scaleX.range()[0])
+      .attr("x2", scaleX.range()[1])
+      .attr("y1", margin.top)
+      .attr("y2", margin.top)
+      .style("stroke", "transparent")
+      .style("stroke-width", "20px")
+      .style("cursor", "pointer");
+
+  const dot = slider.append("circle")
+      .attr("class", "handle")
+      .attr("r", 9)
+      .attr("cx", scaleX(0))
+      .attr("cy", margin.top)
+      .attr("fill", "#fff")
+      .attr("stroke", "#333");
+
+  // drag
+  overlay.call(d3.drag()
+      .on("start drag", (event) => {
+        const val = scaleX.invert(event.x);
+        dot.attr("cx", event.x);
+        updateIso(val);
+      }));
+  dot.call(d3.drag()
+      .on("start drag", (event) => {
+        dot.attr("cx", event.x);
+      }));
+}
+
+function updateIso(newIsoValue){
 
 }
