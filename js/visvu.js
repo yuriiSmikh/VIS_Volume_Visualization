@@ -23,7 +23,8 @@ let fileInput = null;
 let testShader = null;
 let testMesh = null;
 
-let isoValue = 0.0;
+let isoValues = [0.25, 0.3, 0.1];
+let isoColors = ["#ff0000", "#00ff00", "#0000ff"];
 
 /**
  * Load all data and initialize UI here.
@@ -42,8 +43,6 @@ function init() {
   // read and parse volume file
   fileInput = document.getElementById("upload");
   fileInput.addEventListener("change", readFile);
-
-
 }
 
 /**
@@ -84,7 +83,7 @@ async function resetVis() {
     0.1,
     0.1,
     new THREE.Vector3(volume.width, volume.height, volume.depth),
-      isoValue
+    isoValues[0],
   );
 
   // dummy scene: we render a box and attach our color test shader as material
@@ -142,103 +141,233 @@ function paint() {
       testMesh.matrixWorld.clone().invert(),
     );
 
+    testShader.setUniform("isoValues", isoValues);
+    testShader.setUniform(
+      "isoColors",
+      isoColors.map((c) => new THREE.Color(c)),
+    );
+    testShader.setUniform("isoCount", isoValues.length);
+
     renderer.render(scene, camera);
   }
 }
 
-
 function drawHist(data) {
   d3.select("svg").remove(); // REMOVE IF DOING ANIMATIONS
 
-  const margin = {top: 10, right: 10, bottom: 30, left: 30}
-  const width = canvasWidth*0.4
-  const height = canvasHeight*0.4
+  const margin = { top: 10, right: 10, bottom: 30, left: 30 };
+  const width = canvasWidth * 0.4;
+  const height = canvasHeight * 0.4;
 
-  const svg = d3.select("#tfContainer")
-      .append("svg")
-      .attr("width", width + margin.right + margin.left)
-      .attr("height", height + margin.top + margin.bottom)
+  const svg = d3
+    .select("#tfContainer")
+    .append("svg")
+    .attr("width", width + margin.right + margin.left)
+    .attr("height", height + margin.top + margin.bottom);
 
   const bins = d3.bin().thresholds(100)(data);
 
-  // scales
-  const scaleX = d3.scaleLinear()
-      .domain([0, 1])
-      .range([margin.left, width - margin.right])
-      .clamp(true); // hard stop
+  const scaleX = d3
+    .scaleLinear()
+    .domain([0, 1])
+    .range([margin.left, width - margin.right])
+    .clamp(true);
 
-  const scaleY = d3.scaleLinear()
-      .domain([0, 1])
-      .range([height - margin.bottom, margin.top]);
+  const scaleY = d3
+    .scaleLinear()
+    .domain([0, 1])
+    .range([height - margin.bottom, margin.top]);
 
-  const scaleHeight = d3.scaleLinear([0, d3.max(bins, d => d.length)], [height - margin.bottom, margin.top]) // helper to feed the frequencies
+  const scaleHeight = d3.scaleLinear(
+    [0, d3.max(bins, (d) => d.length)],
+    [height - margin.bottom, margin.top],
+  );
 
-  // histogram itself
-  svg.append("g")
-      .selectAll()
-      .data(bins)
-      .join("rect")
-        .attr("x", (d) => scaleX(d.x0))
-        .attr("y", d => scaleHeight(d.length))
-        .attr("width", (d) => scaleX(d.x1) -scaleX(d.x0))
-        .attr("height", (d) => scaleHeight(0) - scaleHeight(d.length))
-        .attr("fill", "#b00b55")
+  // histogram
+  svg
+    .append("g")
+    .selectAll()
+    .data(bins)
+    .join("rect")
+    .attr("x", (d) => scaleX(d.x0))
+    .attr("y", (d) => scaleHeight(d.length))
+    .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
+    .attr("height", (d) => scaleHeight(0) - scaleHeight(d.length))
+    .attr("fill", "#b00b55");
 
   // axes
-  svg.append("g")
-      .attr("transform", `translate(${0}, ${height - margin.bottom})`)
-      .call(d3.axisBottom(scaleX))
-  svg.append("g")
-      .attr("transform", `translate(${margin.left}, ${0})`)
-      .call(d3.axisLeft(scaleY))
+  svg
+    .append("g")
+    .attr("transform", `translate(0, ${height - margin.bottom})`)
+    .call(d3.axisBottom(scaleX));
 
+  svg
+    .append("g")
+    .attr("transform", `translate(${margin.left}, 0)`)
+    .call(d3.axisLeft(scaleY));
 
-  // slider stuff
-  const slider = svg.append("g")
-      .attr("class", "slider")
-      .attr("transform", `translate(0, ${margin.top})`);
+  // --- CONTROL POINTS ---
 
-// slider itself
-  slider.append("line")
-      .attr("x1", scaleX.range()[0])
-      .attr("x2", scaleX.range()[1])
-      .attr("y1", margin.top)
-      .attr("y2", margin.top)
-      .style("stroke", "#ddd")
-      .style("stroke-width", "6px")
-      .style("stroke-linecap", "round");
+  const points = isoValues.map((v) => ({
+    x: scaleX(v ?? 0),
+    y: height - margin.bottom,
+  }));
 
-// bigger area to not miss the slider
-  const overlay = slider.append("line")
-      .attr("x1", scaleX.range()[0])
-      .attr("x2", scaleX.range()[1])
-      .attr("y1", margin.top)
-      .attr("y2", margin.top)
-      .style("stroke", "transparent")
-      .style("stroke-width", "20px")
-      .style("cursor", "pointer");
+  const dots = svg
+    .append("g")
+    .selectAll("circle")
+    .data(points)
+    .enter()
+    .append("circle")
+    .attr("r", 8)
+    .attr("cx", (d) => d.x)
+    .attr("cy", (d) => d.y)
+    .attr("fill", "#fff")
+    .attr("stroke", "#333")
+    .style("cursor", "pointer");
 
-  const dot = slider.append("circle")
-      .attr("class", "handle")
-      .attr("r", 9)
-      .attr("cx", scaleX(0))
-      .attr("cy", margin.top)
-      .attr("fill", "#fff")
-      .attr("stroke", "#333");
+  // Overlay for interaction
+  const overlay = svg
+    .append("rect")
+    .attr("x", margin.left)
+    .attr("y", margin.top)
+    .attr("width", width - margin.left - margin.right)
+    .attr("height", height - margin.top - margin.bottom)
+    .style("fill", "transparent")
+    .style("cursor", "crosshair");
 
-  // drag
-  overlay.call(d3.drag()
-      .on("start drag", (event) => {
-        const val = scaleX.invert(event.x);
-        dot.attr("cx", event.x);
-        updateIso(val);
-      }));
-  dot.call(d3.drag()
-      .on("start drag", (event) => {
-        dot.attr("cx", event.x);
-      }));
+  function dragHandler(event, d) {
+    const x = Math.max(margin.left, Math.min(width - margin.right, event.x));
+    const y = Math.max(margin.top, Math.min(height - margin.bottom, event.y));
+
+    d.x = x;
+    d.y = y;
+
+    d3.select(this).attr("cx", x).attr("cy", y);
+
+    const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
+    const index = dots.data().indexOf(d);
+
+    updateIso(index, iso);
+  }
+
+  dots.call(d3.drag().on("start drag", dragHandler));
+  // Finding the closest point to drag
+  overlay.call(
+    d3.drag().on("start drag", (event) => {
+      const x = Math.max(margin.left, Math.min(width - margin.right, event.x));
+      const y = Math.max(margin.top, Math.min(height - margin.bottom, event.y));
+
+      let closest = points[0];
+      let minDist = Math.abs(points[0].x - x) + Math.abs(points[0].y - y);
+
+      for (let i = 1; i < points.length; i++) {
+        const dist = Math.abs(points[i].x - x) + Math.abs(points[i].y - y);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = points[i];
+        }
+      }
+
+      closest.x = x;
+      closest.y = y;
+
+      dots
+        .filter((d) => d === closest)
+        .attr("cx", x)
+        .attr("cy", y);
+
+      const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
+      const index = points.indexOf(closest);
+
+      updateIso(index, iso);
+    }),
+  );
+
+  // --- CONTROL LIST UI ---
+
+  // remove old UI if re-drawing
+  d3.select("#tfContainer").selectAll(".iso-controls").remove();
+
+  const controlDiv = d3
+    .select("#tfContainer")
+    .append("div")
+    .attr("class", "iso-controls")
+    .style("margin-top", "10px");
+
+  // one row per point
+  const items = controlDiv
+    .selectAll("div")
+    .data(points)
+    .enter()
+    .append("div")
+    .style("display", "flex")
+    .style("align-items", "center")
+    .style("gap", "10px")
+    .style("margin-bottom", "6px");
+
+  // label
+  items
+    .append("span")
+    .text((d, i) => `Iso ${i}`)
+    .style("width", "50px");
+
+  // value label
+  const valueLabels = items
+    .append("span")
+    .text((d, i) => isoValues[i].toFixed(2))
+    .style("width", "50px");
+
+  // color picker
+  items
+    .append("input")
+    .attr("type", "color")
+    .attr("value", (d, i) => isoColors[i])
+    .on("input", function (event, d) {
+      const index = dots.data().indexOf(d);
+      updateColor(index, event.target.value);
+
+      // update dot color immediately
+      dots.filter((p) => p === d).attr("fill", isoColors[index]);
+    });
+
+  const buttons = controlDiv
+    .append("div")
+    .style("margin-top", "10px")
+    .style("display", "flex")
+    .style("gap", "10px");
+
+  // ADD button
+  buttons
+    .append("button")
+    .text("Add")
+    .on("click", () => {
+      if (isoValues.length >= 8) return;
+
+      isoValues.push(0.5); // default position
+      isoColors.push("#ffffff"); // default color
+      drawHist(volume.voxels);
+    });
+
+  // REMOVE button
+  buttons
+    .append("button")
+    .text("Remove")
+    .on("click", () => {
+      if (isoValues.length <= 1) return; // keep at least 1
+
+      isoValues.pop();
+      isoColors.pop();
+      drawHist(volume.voxels);
+    });
 }
 
-function updateIso(newIsoValue){
+function updateIso(index, value) {
+  isoValues[index] = value;
+  requestAnimationFrame(paint); // requesting repain because some iso-value changed
+}
 
+function updateColor(index, color) {
+  isoColors[index] = color;
+  requestAnimationFrame(paint); // requesting repain because some color changed
 }

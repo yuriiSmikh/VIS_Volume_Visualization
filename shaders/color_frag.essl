@@ -8,6 +8,7 @@ precision highp sampler3D;
 
 out vec4 fragColor;
 
+uniform float isoValue;
 uniform sampler3D dataTexture;
 uniform vec3 volumeSize; // (2,2,2) -> (-1,-1,-1) and (1,1,1)
 uniform float threshold;
