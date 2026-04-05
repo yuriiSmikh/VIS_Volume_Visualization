@@ -40,6 +40,8 @@ function init() {
   // read and parse volume file
   fileInput = document.getElementById("upload");
   fileInput.addEventListener("change", readFile);
+
+
 }
 
 /**
@@ -54,6 +56,7 @@ function readFile() {
     volume = new Volume(data);
 
     resetVis();
+    drawHist(volume.voxels);
   };
   reader.readAsArrayBuffer(fileInput.files[0]);
 }
@@ -138,4 +141,53 @@ function paint() {
 
     renderer.render(scene, camera);
   }
+}
+
+
+function drawHist(data) {
+  d3.select("svg").remove(); // REMOVE IF DOING ANIMATIONS
+
+  const margin = {top: 10, right: 10, bottom: 30, left: 30}
+  const width = canvasWidth*0.4
+  const height = canvasHeight*0.4
+
+  const svg = d3.select("#tfContainer")
+      .append("svg")
+      .attr("width", width + margin.right + margin.left)
+      .attr("height", height + margin.top + margin.bottom)
+
+  const bins = d3.bin().thresholds(100)(data);
+
+  // scales
+  const scaleX = d3.scaleLinear()
+      .domain([0, 1])
+      .range([margin.left, width - margin.right]);
+
+  const scaleY = d3.scaleLinear()
+      .domain([0, 1])
+      .range([height - margin.bottom, margin.top]);
+
+  const scaleHeight = d3.scaleLinear([0, d3.max(bins, d => d.length)], [height - margin.bottom, margin.top]) // helper to feed the frequencies
+
+  console.log(bins)
+
+  // histogram itself
+  svg.append("g")
+      .selectAll()
+      .data(bins)
+      .join("rect")
+        .attr("x", (d) => scaleX(d.x0))
+        .attr("y", d => scaleHeight(d.length))
+        .attr("width", (d) => scaleX(d.x1) -scaleX(d.x0))
+        .attr("height", (d) => scaleHeight(0) - scaleHeight(d.length))
+        .attr("fill", "#b00b55")
+
+  // axes
+  svg.append("g")
+      .attr("transform", `translate(${0}, ${height - margin.bottom})`)
+      .call(d3.axisBottom(scaleX))
+  svg.append("g")
+      .attr("transform", `translate(${margin.left}, ${0})`)
+      .call(d3.axisLeft(scaleY))
+
 }
