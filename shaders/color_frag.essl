@@ -73,31 +73,65 @@ void main() {
     }
 
     // constants
-    const float isoValue = 0.3; // range[0, 1.0]
+    const float isoValue1 = 0.3; // range[0, 1.0]
+    const float isoValue2 = 0.25;
     const int maxSearchSteps = 256;
     const int refinementSteps = 6;
 
     float step = (tFar - tNear) / float(maxSearchSteps);
     float currT = tNear;
-    float dif = 0.0;
-    float lastDif = 0.0;
+
+    float dif1 = 0.0;
+    float dif2 = 0.0;
+    float lastDif1 = 0.0;
+    float lastDif2 = 0.0;
     float sampleValue = 0.0;
+    float finalT1 = 0.0;
+    float finalT2 = 0.0;
 
     // init values;
-    dif = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin) - isoValue;
-    lastDif = dif;
+    sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
+    dif1 = sampleValue - isoValue1;
+    dif2 = sampleValue - isoValue2;
+    lastDif1 = dif1;
+    lastDif2 = dif2;
 
-    bool hit = false;
+    bool hit1 = false;
+    bool hit2 = false;
 
     for(int i = 0; i < maxSearchSteps; i++)
     {
         if(currT > tFar) break;
         currT += step;
         sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
-        dif = sampleValue - isoValue;
+        dif1 = sampleValue - isoValue1;
+        dif2 = sampleValue - isoValue2;
 
-        if (sign(dif) != sign(lastDif))
+        if (!hit1 && (sign(dif1) != sign(lastDif1)))
         {
+            hit1 = true;
+            // but do not break;
+            float tMin = currT - step;
+            float tMax = currT;
+            float lastValue = lastDif1 + isoValue1;
+            float t = (isoValue1 - lastValue) / (sampleValue - lastValue);
+            finalT1 = tMin + t * (tMax - tMin);
+        }
+        if (!hit2 && (sign(dif2) != sign(lastDif2)))
+        {
+            hit2 = true;
+            // but do not break;
+            float tMin = currT - step;
+            float tMax = currT;
+            float lastValue = lastDif2 + isoValue2;
+            float t = (isoValue2 - lastValue) / (sampleValue - lastValue);
+            finalT2 = tMin + t * (tMax - tMin);
+        }
+
+        if (hit1 && hit2) {break;}
+
+
+        /*{
             // walked past the isoValue, refining
             float tMin = currT - step;
             float tMax = currT;
@@ -117,19 +151,37 @@ void main() {
             }
             hit = true;
             break;
-        }
+        }*/
 
-        lastDif = dif;
+        lastDif1 = dif1;
+        lastDif2 = dif2;
     }
 
-    if (!hit) discard;
+    if (!hit1 && !hit2) discard;
 
-    vec3 samplePosition = rayOrigin + rayDirection * currT;
+    vec3 samplePosition1 = rayOrigin + rayDirection * finalT1;
+    vec3 uvw1 = (samplePosition1 - (-volumeSize / 2.0)) / volumeSize;
+    vec3 normal1 = gradient(uvw1);
+    float light1 = dot(normal1, normalize(vec3(0.71, 0.5, 0.22)));
 
-    vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
-    vec3 normal = gradient(uvw);
+    vec3 samplePosition2 = rayOrigin + rayDirection * finalT2;
+    vec3 uvw2 = (samplePosition2 - (-volumeSize / 2.0)) / volumeSize;
+    vec3 normal2 = gradient(uvw2);
+    float light2 = dot(normal2, normalize(vec3(0.71, 0.5, 0.22)));
 
-    float light = dot(normal, normalize(vec3(0.71, 0.5, 0.22)));
+    float a1 = 0.7;
+    float a2 = 0.5;
+    vec4 color1 = vec4(1.0, 1.0, 1.0, 1.0);
+    vec4 color2 = vec4(1.0, 0.5, 0.0, 1.0);
 
-    fragColor = vec4(light, light, light, 1.0);
+    vec4 color = vec4(0.0);
+    // if hit for iso value => add its color to final color
+    if (hit1) {
+        color = color + color1*a1*light1;
+    }
+    if (hit2) {
+        color = color + color2*a2*light2;
+    }
+    fragColor = color;
+    //fragColor = vec4(light, light, light, 1);
 }
