@@ -8,14 +8,13 @@ precision highp sampler3D;
 
 out vec4 fragColor;
 
-uniform float isoValue;
+
 uniform sampler3D dataTexture;
-uniform vec3 volumeSize; // (2,2,2) -> (-1,-1,-1) and (1,1,1)
-uniform float threshold;
-uniform float step;
+uniform vec3 volumeSize; // for (2,2,2) -> (-1,-1,-1) and (1,1,1) corners
 uniform int isoCount;
 uniform float isoValues[8];
 uniform vec3 isoColors[8];
+uniform float isoAlphas[8]; // (maybe)
 
 varying vec3 position_obj;
 uniform mat4 inverseModelMat;
@@ -152,7 +151,7 @@ void main() {
         vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
         vec3 normal = gradient(uvw);
         float light = dot(normal, normalize(lightDirection));
-        float alpha = (float(skips)/float(isoCount)) * light; // ts garbage
+        float alpha = (float(skips)/float(isoCount)) * light; // use alphas here (maybe)
         color = color + vec4(isoColors[i]*alpha, alpha);
     }
 

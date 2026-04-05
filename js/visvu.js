@@ -77,13 +77,10 @@ async function resetVis() {
     1000,
   );
 
-  // dummy shader gets a color as input
+  // dummy shader gets a color as input, but this ain't no dum-dum
   testShader = new TestShader2(
     createVolumeTexture(volume),
-    0.1,
-    0.1,
-    new THREE.Vector3(volume.width, volume.height, volume.depth),
-    isoValues[0],
+    new THREE.Vector3(volume.width, volume.height, volume.depth)
   );
 
   // dummy scene: we render a box and attach our color test shader as material
@@ -134,16 +131,15 @@ function createVolumeTexture(volume) {
  */
 function paint() {
   if (volume) {
-    //NOTE: model matrix and inverse() aren't available in fragment shaders,
-    // and we can't calculate them in the vertex shader either because they would get interpolated incorrectly.
+    // NOTE: model matrix and inverse() aren't available in fragment shaders,
+    //       and we can't calculate them in the vertex shader either because they would get interpolated incorrectly.
     testShader.setUniform(
       "inverseModelMat",
       testMesh.matrixWorld.clone().invert(),
     );
 
     testShader.setUniform("isoValues", isoValues);
-    testShader.setUniform(
-      "isoColors",
+    testShader.setUniform( "isoColors",
       isoColors.map((c) => new THREE.Color(c)),
     );
     testShader.setUniform("isoCount", isoValues.length);
@@ -364,10 +360,10 @@ function drawHist(data) {
 
 function updateIso(index, value) {
   isoValues[index] = value;
-  requestAnimationFrame(paint); // requesting repain because some iso-value changed
+  requestAnimationFrame(paint); // requesting repaint because some iso-value changed
 }
 
 function updateColor(index, color) {
   isoColors[index] = color;
-  requestAnimationFrame(paint); // requesting repain because some color changed
+  requestAnimationFrame(paint); // requesting repaint because some color changed
 }
