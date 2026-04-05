@@ -342,6 +342,8 @@ function drawHist(data) {
     .append("button")
     .text("Add")
     .on("click", () => {
+      if (isoValues.length >= 8) return;
+
       isoValues.push(0.5); // default position
       isoColors.push("#ffffff"); // default color
       drawHist(volume.voxels);
