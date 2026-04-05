@@ -112,8 +112,8 @@ function createVolumeTexture(volume) {
     volume.height,
     volume.depth,
   );
-  texture.minFilter = THREE.NearestFilter;
-  texture.maxFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.maxFilter = THREE.LinearFilter;
 
   texture.format = THREE.RedFormat;
   texture.type = THREE.FloatType;

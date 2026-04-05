@@ -57,16 +57,12 @@ void main() {
         discard;
     }
 
-
-
     // constants
-    float isoValue = 0.5; // range[0, 1.0]
-    float startingStep = 0.1; //Check the perfomance
-    float hitThreshold = 0.1;
+    const float isoValue = 0.3; // range[0, 1.0]
+    const int maxSearchSteps = 512;
+    const int refinementSteps = 8;
 
-    bool hitFlag = false;
-    int maxIterations = 64;
-    float step = startingStep;
+    float step = (tFar - tNear) / float(maxSearchSteps);
     float currT = tNear;
     float dif = 0.0;
     float lastDif = 0.0;
@@ -76,27 +72,44 @@ void main() {
     dif = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin) - isoValue;
     lastDif = dif;
 
-    for(int i = 0; i < maxIterations; i++) {
-        if(currT > tFar) discard;
-        if(abs(dif) < hitThreshold){
-            hitFlag = true;
-            sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
-            break;
-        }
+    bool hit = false;
 
+    for(int i = 0; i < maxSearchSteps; i++)
+    {
+        if(currT > tFar) discard;
         currT += step;
         sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
         dif = sampleValue - isoValue;
 
-        if (sign(dif) != sign(lastDif)){
-            // for now just return
+        if (sign(dif) != sign(lastDif))
+        {
+            // walked past the isoValue, refining
+            float tMin = currT - step;
+            float tMax = currT;
+            for (int j = 0; j < refinementSteps; j++)
+            {
+                currT = 0.5 * (tMin + tMax);
+                sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
+                if (sign(sampleValue - isoValue) == sign(lastDif))
+                {
+                    tMin = currT;
+                }
+                else
+                {
+                    tMax = currT;
+                }
+            }
+            hit = true;
             break;
-
-            // overstepped: homing in.
-            //step /= 2;
-            //currT -= step;
         }
+
         lastDif = dif;
     }
-    fragColor = vec4(sampleValue, sampleValue, sampleValue, 1.0);
+
+    if (!hit) discard;
+
+    vec3 samplePosition = rayOrigin + rayDirection * currT;
+    vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
+
+    fragColor = vec4(uvw, 1.0);
 }
