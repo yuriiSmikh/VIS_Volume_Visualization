@@ -114,22 +114,22 @@ void main() {
             {
                 float tMin = currT - step;
                 float tMax = currT;
-                currT = 0.5 * (tMin + tMax);
+                float target = 0.5 * (tMin + tMax);
                 for (int j = 0; j < refinementSteps; j++)
                 {
-                    currT = 0.5 * (tMin + tMax);
-                    sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
+                    target = 0.5 * (tMin + tMax);
+                    sampleValue = sampleAtT(target, tNear, tFar, rayDirection, rayOrigin);
                     if (sign(sampleValue - isoValues[i]) == sign(lastDifs[i]))
                     {
-                        tMin = currT;
+                        tMin = target;
                     }
                     else
                     {
-                        tMax = currT;
+                        tMax = target;
                     }
                 }
                 hits[i] = true;
-                finalTs[i] = currT;
+                finalTs[i] = target;
                 skips++;
             }
         }
