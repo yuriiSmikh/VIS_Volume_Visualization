@@ -11,8 +11,8 @@ out vec4 fragColor;
 uniform sampler3D dataTexture;
 uniform vec3 volumeSize; // for (2,2,2) -> (-1,-1,-1) and (1,1,1) corners
 uniform int isoCount;
-uniform float isoValues[8];
-uniform vec4 isoColors[8];
+uniform float isoValues[4];
+uniform vec4 isoColors[4];
 
 varying vec3 position_obj;
 uniform mat4 inverseModelMat;
@@ -48,7 +48,7 @@ vec3 gradient(vec3 uvw)
     // given that the input point will lie around the edge of the density values,
     // the volume gradient will behave similarly to a normal vector and can be used for lighting.
 
-    vec3 h = vec3(1, 1, 1) / volumeSize;
+    vec3 h = vec3(1.0, 1.0, 1.0) / volumeSize;
 
     float dx = texture(dataTexture, uvw + vec3(h.x,0,0)).r - texture(dataTexture, uvw - vec3(h.x,0,0)).r;
     float dy = texture(dataTexture, uvw + vec3(0,h.y,0)).r - texture(dataTexture, uvw - vec3(0,h.y,0)).r;
@@ -75,16 +75,16 @@ void main() {
 
     // constants
     const int maxSearchSteps = 128;
-    const int refinementSteps = 6;
+    const int refinementSteps = 8;
     const vec3 lightDirection = vec3(0.71, 0.5, 0.22); // questionable name
 
     float step = (tFar - tNear) / float(maxSearchSteps);
     float currT = tNear;
 
-    float difs[8];
-    float lastDifs[8];
-    float finalTs[8];
-    bool hits[8];
+    float difs[4];
+    float lastDifs[4];
+    float finalTs[4];
+    bool hits[4];
     int skips = 0;
     float sampleValue = 0.0;
 
@@ -142,7 +142,7 @@ void main() {
     //NOTE In order to properly compose the layers, we need to sort them by accending hit depth
     //     Sorting on gpu ins't a good idea generally, but it should be fine for a small n
 
-    int indices[8];
+    int indices[4];
     int count = 0;
 
     // collect valid hits
@@ -183,8 +183,8 @@ void main() {
 
         float ambientStrength = 0.1;
         float diffuseStrength = 1.0;
-        float specularStrength = 0.5;
-        float shininess = 32.0;
+        float specularStrength = 0.25;
+        float shininess = 16.0;
 
         float diff = max(dot(N, L), 0.0);
         float spec = pow(max(dot(R, V), 0.0), shininess);

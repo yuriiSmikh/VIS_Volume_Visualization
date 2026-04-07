@@ -23,10 +23,11 @@ let fileInput = null;
 let testShader = null;
 let testMesh = null;
 
-const MAX_ISO = 8;
+const MAX_ISO = 4;
 
-let isoValues = [0.25];
-let isoColors = ["#ffffff"];
+let isoValues = [0.18, 0.3];
+let isoAlphas = [0.33, 1.0];
+let isoColors = ["#ff7f00", "#ffffff"];
 
 /**
  * Load all data and initialize UI here.
@@ -148,12 +149,7 @@ function paint() {
     for (let i = 0; i < MAX_ISO; i++) {
       if (i < isoColors.length) {
         const c = new THREE.Color(isoColors[i]);
-        colorArray[i] = new THREE.Vector4(
-          c.r,
-          c.g,
-          c.b,
-          1.0 / isoColors.length,
-        );
+        colorArray[i] = new THREE.Vector4(c.r, c.g, c.b, isoAlphas[i]);
         // colorArray.push(new THREE.Vector4(c.r, c.g, c.b, 0.5));
       } else {
         //colorArray.push(new THREE.Vector4(0, 0, 0, 0));
@@ -349,11 +345,26 @@ function drawHist(data) {
     .attr("type", "color")
     .attr("value", (d, i) => isoColors[i])
     .on("input", function (event, d) {
-      const index = dots.data().indexOf(d);
-      updateColor(index, event.target.value);
+      const index = points.indexOf(d);
+      isoColors[index] = event.target.value;
 
-      // update dot color immediately
+      // update dot color
       dots.filter((p) => p === d).attr("fill", isoColors[index]);
+    });
+
+  // alpha slider
+  items
+    .append("input")
+    .attr("type", "range")
+    .attr("min", 0)
+    .attr("max", 1)
+    .attr("step", 0.01)
+    .attr("value", (d, i) => isoAlphas[i] ?? 1.0)
+    .style("width", "80px")
+    .on("input", function (event, d) {
+      const index = points.indexOf(d);
+      isoAlphas[index] = parseFloat(event.target.value);
+      requestAnimationFrame(paint);
     });
 
   const buttons = controlDiv
@@ -367,7 +378,7 @@ function drawHist(data) {
     .append("button")
     .text("Add")
     .on("click", () => {
-      if (isoValues.length >= 8) return;
+      if (isoValues.length >= MAX_ISO) return;
 
       isoValues.push(0.5); // default position
       isoColors.push("#ffffff"); // default color
