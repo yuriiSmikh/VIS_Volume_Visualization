@@ -74,17 +74,17 @@ void main() {
     }
 
     // constants
-    const int maxSearchSteps = 256;
+    const int maxSearchSteps = 128;
     const int refinementSteps = 6;
     const vec3 lightDirection = vec3(0.71, 0.5, 0.22); // questionable name
 
     float step = (tFar - tNear) / float(maxSearchSteps);
     float currT = tNear;
 
-    float difs[8] = float[8](0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    float lastDifs[8] = float[8](0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    float finalTs[8] = float[8](0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    bool hits[8] = bool[8](false, false, false, false, false, false, false, false);
+    float difs[8];
+    float lastDifs[8];
+    float finalTs[8];
+    bool hits[8];
     int skips = 0;
     float sampleValue = 0.0;
 
@@ -139,19 +139,71 @@ void main() {
 
     if (skips == 0) discard;
 
-    vec4 color = vec4(0.0);
+    //NOTE In order to properly compose the layers, we need to sort them by accending hit depth
+    //     Sorting on gpu ins't a good idea generally, but it should be fine for a small n
 
-    for (int i = 0; i < isoCount; i++)
+    int indices[8];
+    int count = 0;
+
+    // collect valid hits
+    for (int i = 0; i < isoCount; i++) {
+        if (hits[i]) {
+            indices[count++] = i;
+        }
+    }
+
+    // sort by depth: nearest → farthest (ascending t)
+    // NOTE insertion sort is used because n is small, it doesn't involve recursion and doesn't require additional allocations
+    for (int i = 1; i < count; i++) {
+        int key = indices[i];
+        float keyT = finalTs[key];
+
+        int j = i - 1;
+        while (j >= 0 && finalTs[indices[j]] > keyT) {
+            indices[j + 1] = indices[j];
+            j--;
+        }
+        indices[j + 1] = key;
+    }
+
+    vec3 color = vec3(0.0);
+    float alphaAccum = 0.0;
+    for (int k = 0; k < count; k++)
     {
-        if (!hits[i]) continue;
+        int i = indices[k];
 
         vec3 samplePosition = rayOrigin + rayDirection * finalTs[i];
         vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
-        vec3 normal = gradient(uvw);
-        float light = dot(normal, normalize(lightDirection));
-        float alpha = (float(skips)/float(isoCount)) * light; // use alphas here (maybe)
-        color = color + vec4((isoColors[i]*alpha).rgb, alpha);
+
+        // phong shading
+        vec3 N = normalize(gradient(uvw)); //surface normal
+        vec3 L = normalize(lightDirection);//light direction
+        vec3 V = normalize(-rayDirection); //view direction
+        vec3 R = reflect(-L, N); // reflected light direction
+
+        float ambientStrength = 0.1;
+        float diffuseStrength = 1.0;
+        float specularStrength = 0.5;
+        float shininess = 32.0;
+
+        float diff = max(dot(N, L), 0.0);
+        float spec = pow(max(dot(R, V), 0.0), shininess);
+
+        float light =
+        ambientStrength
+        + diffuseStrength * diff
+        + specularStrength * spec;
+
+        vec3 srcColor = isoColors[i].rgb * light;
+        float alpha = isoColors[i].a;
+
+        // front-to-back compositing
+        color += (1.0 - alphaAccum) * srcColor * alpha;
+        alphaAccum += (1.0 - alphaAccum) * alpha;
+
+        // early exit
+        if (alphaAccum > 0.95) break;
     }
 
-    fragColor = color;
+    fragColor = vec4(color, 1);
 }

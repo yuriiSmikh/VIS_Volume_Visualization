@@ -25,8 +25,8 @@ let testMesh = null;
 
 const MAX_ISO = 8;
 
-let isoValues = [0.25, 0.3, 0.1];
-let isoColors = ["#ff0000", "#00ff00", "#0000ff"];
+let isoValues = [0.25];
+let isoColors = ["#ffffff"];
 
 /**
  * Load all data and initialize UI here.
@@ -144,13 +144,20 @@ function paint() {
 
     // NOTE: The array we pass to the gpu has to have exactly MAX_ISO elements.
     //       We need to explicitly pad it if it's smaller.
-    const colorArray = [];
+    const colorArray = new Array(MAX_ISO);
     for (let i = 0; i < MAX_ISO; i++) {
       if (i < isoColors.length) {
         const c = new THREE.Color(isoColors[i]);
-        colorArray.push(new THREE.Vector4(c.r, c.g, c.b, 0.5));
+        colorArray[i] = new THREE.Vector4(
+          c.r,
+          c.g,
+          c.b,
+          1.0 / isoColors.length,
+        );
+        // colorArray.push(new THREE.Vector4(c.r, c.g, c.b, 0.5));
       } else {
-        colorArray.push(new THREE.Vector4(0, 0, 0, 0));
+        //colorArray.push(new THREE.Vector4(0, 0, 0, 0));
+        colorArray[i] = new THREE.Vector4(0, 0, 0, 0);
       }
     }
     testShader.setUniform("isoColors", colorArray, "v4v");
