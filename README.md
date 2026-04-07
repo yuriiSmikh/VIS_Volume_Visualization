@@ -3,7 +3,7 @@
 Load one of the provided volume files through the GUI. 
 Rotate the orbit camera around the bounding box using the left mouse button. Zoom using the scroll wheel. 
 
-**TODO: complete this section!** (how to use the editor etc.)
+The editor allows for adding aditional densities (ISO) and their alpha values. So for example you could render the bones as non-transparent and the skin - somewhat transparent. The sliders will have thei color of their corresponding layer.
 
 ## Framework Description
 
