@@ -25,6 +25,7 @@ let testMesh = null;
 
 const MAX_ISO = 4;
 
+let points = [];
 let isoValues = [0.18, 0.3];
 let isoAlphas = [0.33, 1.0];
 let isoColors = ["#ff7f00", "#ffffff"];
@@ -174,16 +175,18 @@ function paint() {
 }
 
 function drawHist(data) {
-  d3.select("svg").remove(); // REMOVE IF DOING ANIMATIONS
-
   const margin = { top: 10, right: 10, bottom: 30, left: 30 };
   const width = canvasWidth * 0.4;
   const height = canvasHeight * 0.4;
 
+  // remove previous SVG and UI
+  d3.select("#tfContainer").selectAll("svg").remove();
+  d3.select("#tfContainer").selectAll(".iso-controls").remove();
+
   const svg = d3
     .select("#tfContainer")
     .append("svg")
-    .attr("width", width + margin.right + margin.left)
+    .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom);
 
   const bins = d3.bin().thresholds(100)(data);
@@ -193,12 +196,10 @@ function drawHist(data) {
     .domain([0, 1])
     .range([margin.left, width - margin.right])
     .clamp(true);
-
   const scaleY = d3
     .scaleLinear()
     .domain([0, 1])
     .range([height - margin.bottom, margin.top]);
-
   const scaleHeight = d3.scaleLinear(
     [0, d3.max(bins, (d) => d.length)],
     [height - margin.bottom, margin.top],
@@ -207,7 +208,7 @@ function drawHist(data) {
   // histogram
   svg
     .append("g")
-    .selectAll()
+    .selectAll("rect")
     .data(bins)
     .join("rect")
     .attr("x", (d) => scaleX(d.x0))
@@ -221,33 +222,32 @@ function drawHist(data) {
     .append("g")
     .attr("transform", `translate(0, ${height - margin.bottom})`)
     .call(d3.axisBottom(scaleX));
-
   svg
     .append("g")
-    .attr("transform", `translate(${margin.left}, 0)`)
+    .attr("transform", `translate(${margin.left},0)`)
     .call(d3.axisLeft(scaleY));
 
   // --- CONTROL POINTS ---
-
-  const points = isoValues.map((v) => ({
-    x: scaleX(v ?? 0),
-    y: height - margin.bottom,
-  }));
+  if (!window.points || points.length !== isoValues.length) {
+    points = isoValues.map((v, i) => ({
+      x: scaleX(v ?? 0),
+      y: points?.[i]?.y ?? height - margin.bottom,
+    }));
+  }
 
   const dots = svg
     .append("g")
     .selectAll("circle")
     .data(points)
-    .enter()
-    .append("circle")
+    .join("circle")
     .attr("r", 8)
     .attr("cx", (d) => d.x)
     .attr("cy", (d) => d.y)
-    .attr("fill", "#fff")
+    .attr("fill", (d, i) => isoColors[i])
+    .attr("fill-opacity", (d, i) => isoAlphas[i] ?? 1.0)
     .attr("stroke", "#333")
     .style("cursor", "pointer");
 
-  // Overlay for interaction
   const overlay = svg
     .append("rect")
     .attr("x", margin.left)
@@ -263,17 +263,16 @@ function drawHist(data) {
 
     d.x = x;
     d.y = y;
-
     d3.select(this).attr("cx", x).attr("cy", y);
 
     const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
-    const index = dots.data().indexOf(d);
-
+    const index = points.indexOf(d);
     updateIso(index, iso);
   }
 
   dots.call(d3.drag().on("start drag", dragHandler));
-  // Finding the closest point to drag
+
+  // overlay drag
   overlay.call(
     d3.drag().on("start drag", (event) => {
       const x = Math.max(margin.left, Math.min(width - margin.right, event.x));
@@ -281,7 +280,6 @@ function drawHist(data) {
 
       let closest = points[0];
       let minDist = Math.abs(points[0].x - x) + Math.abs(points[0].y - y);
-
       for (let i = 1; i < points.length; i++) {
         const dist = Math.abs(points[i].x - x) + Math.abs(points[i].y - y);
         if (dist < minDist) {
@@ -292,7 +290,6 @@ function drawHist(data) {
 
       closest.x = x;
       closest.y = y;
-
       dots
         .filter((d) => d === closest)
         .attr("cx", x)
@@ -300,28 +297,21 @@ function drawHist(data) {
 
       const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
       const index = points.indexOf(closest);
-
       updateIso(index, iso);
     }),
   );
 
   // --- CONTROL LIST UI ---
-
-  // remove old UI if re-drawing
-  d3.select("#tfContainer").selectAll(".iso-controls").remove();
-
   const controlDiv = d3
     .select("#tfContainer")
     .append("div")
     .attr("class", "iso-controls")
     .style("margin-top", "10px");
 
-  // one row per point
   const items = controlDiv
     .selectAll("div")
     .data(points)
-    .enter()
-    .append("div")
+    .join("div")
     .style("display", "flex")
     .style("align-items", "center")
     .style("gap", "10px")
@@ -334,12 +324,12 @@ function drawHist(data) {
     .style("width", "50px");
 
   // value label
-  const valueLabels = items
+  items
     .append("span")
     .text((d, i) => isoValues[i].toFixed(2))
     .style("width", "50px");
 
-  // color picker
+  // color picker with alpha support
   items
     .append("input")
     .attr("type", "color")
@@ -348,8 +338,14 @@ function drawHist(data) {
       const index = points.indexOf(d);
       isoColors[index] = event.target.value;
 
-      // update dot color
+      // update dot
       dots.filter((p) => p === d).attr("fill", isoColors[index]);
+
+      // update slider accent color
+      controlDiv
+        .selectAll("input[type='range']")
+        .filter((_, i) => i === index)
+        .style("accent-color", isoColors[index]);
     });
 
   // alpha slider
@@ -361,39 +357,44 @@ function drawHist(data) {
     .attr("step", 0.01)
     .attr("value", (d, i) => isoAlphas[i] ?? 1.0)
     .style("width", "80px")
+    .style("accent-color", (d, i) => isoColors[i])
     .on("input", function (event, d) {
       const index = points.indexOf(d);
       isoAlphas[index] = parseFloat(event.target.value);
+
+      // update dot transparency
+      dots.filter((p) => p === d).attr("fill-opacity", isoAlphas[index]);
       requestAnimationFrame(paint);
     });
 
+  // ADD / REMOVE buttons
   const buttons = controlDiv
     .append("div")
     .style("margin-top", "10px")
     .style("display", "flex")
     .style("gap", "10px");
 
-  // ADD button
   buttons
     .append("button")
     .text("Add")
     .on("click", () => {
       if (isoValues.length >= MAX_ISO) return;
-
-      isoValues.push(0.5); // default position
-      isoColors.push("#ffffff"); // default color
+      isoValues.push(0.5);
+      isoColors.push("#ffffff");
+      isoAlphas.push(1.0);
+      points.push({ x: scaleX(0.5), y: height - margin.bottom });
       drawHist(volume.voxels);
     });
 
-  // REMOVE button
   buttons
     .append("button")
     .text("Remove")
     .on("click", () => {
-      if (isoValues.length <= 1) return; // keep at least 1
-
+      if (isoValues.length <= 1) return;
       isoValues.pop();
       isoColors.pop();
+      isoAlphas.pop();
+      points.pop();
       drawHist(volume.voxels);
     });
 }
