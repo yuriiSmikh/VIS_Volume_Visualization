@@ -23,6 +23,8 @@ let fileInput = null;
 let testShader = null;
 let testMesh = null;
 
+const MAX_ISO = 8;
+
 let isoValues = [0.25, 0.3, 0.1];
 let isoColors = ["#ff0000", "#00ff00", "#0000ff"];
 
@@ -80,7 +82,7 @@ async function resetVis() {
   // dummy shader gets a color as input, but this ain't no dum-dum
   testShader = new TestShader2(
     createVolumeTexture(volume),
-    new THREE.Vector3(volume.width, volume.height, volume.depth)
+    new THREE.Vector3(volume.width, volume.height, volume.depth),
   );
 
   // dummy scene: we render a box and attach our color test shader as material
@@ -138,11 +140,31 @@ function paint() {
       testMesh.matrixWorld.clone().invert(),
     );
 
-    testShader.setUniform("isoValues", isoValues);
-    testShader.setUniform( "isoColors",
-      isoColors.map((c) => new THREE.Color(c)),
-    );
     testShader.setUniform("isoCount", isoValues.length);
+
+    // NOTE: The array we pass to the gpu has to have exactly MAX_ISO elements.
+    //       We need to explicitly pad it if it's smaller.
+    const colorArray = [];
+    for (let i = 0; i < MAX_ISO; i++) {
+      if (i < isoColors.length) {
+        const c = new THREE.Color(isoColors[i]);
+        colorArray.push(new THREE.Vector4(c.r, c.g, c.b, 0.5));
+      } else {
+        colorArray.push(new THREE.Vector4(0, 0, 0, 0));
+      }
+    }
+    testShader.setUniform("isoColors", colorArray, "v4v");
+
+    // the same goes for iso value array
+    const valueArray = new Array(MAX_ISO);
+    for (let i = 0; i < MAX_ISO; i++) {
+      if (i < isoValues.length) {
+        valueArray[i] = isoValues[i];
+      } else {
+        valueArray[i] = 0.0;
+      }
+    }
+    testShader.setUniform("isoValues", valueArray, "1fv");
 
     renderer.render(scene, camera);
   }
