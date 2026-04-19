@@ -30,7 +30,7 @@ let isoValues = [0.18, 0.3];
 let isoAlphas = [0.33, 1.0];
 let isoColors = ["#ff7f00", "#ffffff"];
 
-let firstHitSelectionBool = 1;
+let firstHitSelectionBool = 0;
 
 /**
  * Load all data and initialize UI here.
@@ -52,11 +52,8 @@ function init() {
 
   compositingSelection = document.getElementById("compositing");
   compositingSelection.addEventListener("change", (event) => {
-    resetVis();
-    let choice = event.target.value;
-
-    testShader.setUniform("firstHitSelection", choice == "firstHit");
-    console.log("Compisting choice:", choice);
+    firstHitSelectionBool = event.target.value == "firstHit";
+    requestAnimationFrame(paint);
   });
 }
 
@@ -152,6 +149,8 @@ function paint() {
       "inverseModelMat",
       testMesh.matrixWorld.clone().invert(),
     );
+
+    testShader.setUniform("firstHitSelection", firstHitSelectionBool);
 
     testShader.setUniform("isoCount", isoValues.length);
 
