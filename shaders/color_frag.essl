@@ -11,6 +11,7 @@ out vec4 fragColor;
 uniform sampler3D dataTexture;
 uniform vec3 volumeSize; // for (2,2,2) -> (-1,-1,-1) and (1,1,1) corners
 uniform int isoCount;
+uniform int firstHitSelection;
 uniform float isoValues[4];
 uniform vec4 isoColors[4];
 
@@ -57,10 +58,7 @@ vec3 gradient(vec3 uvw)
     return normalize(vec3(dx, dy, dz));
 }
 
-void main() {
-
-    vec3 rayOrigin = (inverseModelMat * vec4(cameraPosition, 1.0)).xyz;
-    vec3 rayDirection = normalize(position_obj - rayOrigin);
+vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
 
     // entry exit points
     float tNear;
@@ -205,5 +203,24 @@ void main() {
         if (alphaAccum > 0.95) break;
     }
 
-    fragColor = vec4(color, 1);
+    return vec4(color, 1);
+}
+
+vec4 MaxDencityImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
+    return vec4(0,0,0,0);
+}
+
+
+void main() {
+
+    vec3 rayOrigin = (inverseModelMat * vec4(cameraPosition, 1.0)).xyz;
+    vec3 rayDirection = normalize(position_obj - rayOrigin);
+
+
+    if(firstHitSelection == 1){
+        fragColor = FirstHitImplemnentation(rayOrigin, rayDirection);
+    }
+    else{
+        fragColor = MaxDencityImplemnentation(rayOrigin, rayDirection);
+    }
 }

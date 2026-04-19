@@ -1,54 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>VisVU</title>
+    <head>
+        <meta charset="UTF-8" />
+        <title>VisVU</title>
 
-    <link rel="stylesheet" type="text/css" href="style.css">
+        <link rel="stylesheet" type="text/css" href="style.css" />
 
-    <!-- include THREE.js -->
-    <script src="three.js/build/three.js"></script>
+        <!-- include THREE.js -->
+        <script src="three.js/build/three.js"></script>
 
-    <!-- include d3.js -->
-    <script src="d3.js/d3.v7.js"></script>
+        <!-- include d3.js -->
+        <script src="d3.js/d3.v7.js"></script>
 
-    <!-- include VisVU script -->
-    <script src="js/shader.js"></script>
-    <script src="js/testShader.js"></script>
-    <script src="js/testShader2.js"></script>
-    <script src="js/volume.js"></script>
-    <script src="js/camera.js"></script>
-    <script src="js/visvu.js"></script>
+        <!-- include VisVU script -->
+        <script src="js/shader.js"></script>
+        <script src="js/testShader.js"></script>
+        <script src="js/testShader2.js"></script>
+        <script src="js/volume.js"></script>
+        <script src="js/camera.js"></script>
+        <script src="js/visvu.js"></script>
+    </head>
 
-</head>
+    <!-- call init function when page has loaded -->
+    <body onload="init()">
+        <h1>VisVU Exercise</h1>
+        <h2>Mykyta Korobeinykov, Maksym Nashyba, Yurii Smikh</h2>
 
-<!-- call init function when page has loaded -->
-<body onload="init()">
+        <!-- data selector -->
+        <p>Select your data here: <input id="upload" type="file" /></p>
 
-<h1>VisVU Exercise</h1>
-<h2>Mykyta Korobeinykov, Maksym Nashyba, Yurii Smikh</h2>
+        <label for="compositing">Select compositing method</label>
+        <select name="compositingSelect" id="compositing">
+            <option value="mip">Maximum Intesity Compositing</option>
+            <option value="firstHit">First Hit Compositing</option>
+        </select>
 
-<!-- data selector -->
-<p>Select your data here: <input id="upload" type="file"></p>
+        <div class="container">
+            <!-- volume rendering container -->
+            <div id="viewContainer"></div>
 
-
-<label for="compositing">Select compositing method</label>
-<select name="compositingSelect" id="compositing">
-    <option value="mip">MIP</option> <!-- TODO: change the name of mip fragment shader to mip.essl-->
-    <option value="color_frag">First Hit</option>
-</select>
-
-
-<div class="container">
-
-    <!-- volume rendering container -->
-    <div id="viewContainer"></div>
-
-    <!-- container for interactive transfer function -->
-    <div id="tfContainer"></div>
-
-</div>
-
-
-</body>
+            <!-- container for interactive transfer function -->
+            <div id="tfContainer"></div>
+        </div>
+    </body>
 </html>

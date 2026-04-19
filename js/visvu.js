@@ -30,7 +30,7 @@ let isoValues = [0.18, 0.3];
 let isoAlphas = [0.33, 1.0];
 let isoColors = ["#ff7f00", "#ffffff"];
 
-let compositingMethod = "color_frag"
+let firstHitSelectionBool = 1;
 
 /**
  * Load all data and initialize UI here.
@@ -51,12 +51,14 @@ function init() {
   fileInput.addEventListener("change", readFile);
 
   compositingSelection = document.getElementById("compositing");
-  compositingSelection.addEventListener("select", (event) => {
-      compositingMethod = event.target.value()
-      resetVis() // hope ts works🙏
-  })
-}
+  compositingSelection.addEventListener("change", (event) => {
+    resetVis();
+    let choice = event.target.value;
 
+    testShader.setUniform("firstHitSelection", choice == "firstHit");
+    console.log("Compisting choice:", choice);
+  });
+}
 
 /**
  * Handles the file reader. No need to change anything here.
@@ -94,7 +96,6 @@ async function resetVis() {
   testShader = new TestShader2(
     createVolumeTexture(volume),
     new THREE.Vector3(volume.width, volume.height, volume.depth),
-      compositingMethod
   );
 
   // dummy scene: we render a box and attach our color test shader as material

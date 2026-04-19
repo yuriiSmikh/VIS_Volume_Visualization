@@ -1,6 +1,7 @@
 class TestShader2 extends Shader {
-  constructor(dataTexture, volumeSize, fragmentShader) { // fragment shader without filetype
-    super("color_vert", fragmentShader);
+  constructor(dataTexture, volumeSize) {
+    // fragment shader without filetype
+    super("color_vert", "color_frag");
 
     this.setUniform("dataTexture", dataTexture);
     this.setUniform("volumeSize", volumeSize);
