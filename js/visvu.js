@@ -30,7 +30,7 @@ let isoValues = [0.18, 0.3];
 let isoAlphas = [0.33, 1.0];
 let isoColors = ["#ff7f00", "#ffffff"];
 
-let firstHitSelectionBool = 0;
+let firstHitSelectionBool = 1;
 
 /**
  * Load all data and initialize UI here.
@@ -262,7 +262,7 @@ function drawHist(data) {
   if (!window.points || points.length !== isoValues.length) {
     points = isoValues.map((v, i) => ({
       x: scaleX(v ?? 0),
-      y: points?.[i]?.y ?? height - margin.bottom,
+      y: scaleY(isoAlphas[i]),
     }));
   }
 
@@ -277,68 +277,40 @@ function drawHist(data) {
     .attr("cy", (d) => d.y)
     .attr("fill", (d, i) => isoColors[i])
     .attr("fill-opacity", (d, i) => isoAlphas[i] ?? 1.0)
-    .attr("stroke", "#333")
+    .attr("stroke", (d, i) => isoColors[i])
     .style("cursor", "pointer");
 
-  const overlay = svg
-    .append("rect")
-    .attr("class", "overlay")
-    .attr("x", margin.left)
-    .attr("y", margin.top)
-    .attr("width", width - margin.left - margin.right)
-    .attr("height", height - margin.top - margin.bottom)
-    .style("fill", "transparent")
-    .style("cursor", "crosshair");
 
-  function dragHandler(event, d) {
-    const x = Math.max(margin.left, Math.min(width - margin.right, event.x));
-    const y = Math.max(margin.top, Math.min(height - margin.bottom, event.y));
+  const drag = d3.drag()
+      .on("start", function(event, d) {
+          d3.select(this).raise().interrupt().transition().duration(100).attr("r", 12)
+      })
+      .on("drag", function(event, d) {
+            const x = Math.max(margin.left, Math.min(width - margin.right, event.x));
+            const y = Math.max(margin.top, Math.min(height - margin.bottom, event.y));
 
-    d.x = x;
-    d.y = y;
-    d3.select(this).attr("cx", x).attr("cy", y);
+            d.x = x;
+            d.y = y;
 
-    const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
-    const index = points.indexOf(d);
-    updateIso(index, iso);
-  }
+            const index = points.indexOf(d);
+            const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
+            const isoAlpha = Math.max(0, Math.min(1, scaleY.invert(y)))
+            isoAlphas[index] = isoAlpha
 
-  dots.call(d3.drag().on("start drag", dragHandler));
+            d3.select(this).attr("cx", x).attr("cy", y)
+            .attr("fill-opacity", isoAlpha)
 
-  // overlay drag
-  overlay.call(
-    d3.drag().on("start drag", (event) => {
-      const x = Math.max(margin.left, Math.min(width - margin.right, event.x));
-      const y = Math.max(margin.top, Math.min(height - margin.bottom, event.y));
+            d3.select("span.isoValueText").text((d, i) => `Iso ${i} = `.concat(iso.toFixed(2), ",")
+)
+            d3.select("span.isoAlphaText").text("alpha = ".concat(isoAlpha.toFixed(2)))
+            updateIso(index, iso);
+      })
+      .on("end", function (event, d) {
+          d3.select(this).transition().duration(50).attr("r", 8)
+      })
 
-      let closest = points[0];
-      let minDist = Math.abs(points[0].x - x) + Math.abs(points[0].y - y);
-      for (let i = 1; i < points.length; i++) {
-        const dist = Math.abs(points[i].x - x) + Math.abs(points[i].y - y);
-        if (dist < minDist) {
-          minDist = dist;
-          closest = points[i];
-        }
-      }
+    dots.call(drag)
 
-      closest.x = x;
-      closest.y = y;
-      dots
-        .filter((d) => d === closest)
-        .attr("cx", x)
-        .attr("cy", y)
-        .attr("fill-opacity", (d) => {
-            const i = points.indexOf(d)
-            isoAlphas[i] = scaleY.invert(d.y)
-            return isoAlphas[i]
-        }) // works
-
-
-      const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
-      const index = points.indexOf(closest);
-      updateIso(index, iso);
-    }),
-  );
 
   // --- CONTROL LIST UI ---
   const controlDiv = d3
@@ -356,17 +328,20 @@ function drawHist(data) {
     .style("gap", "10px")
     .style("margin-bottom", "6px");
 
-  // label
-  items
-    .append("span")
-    .text((d, i) => `Iso ${i}`)
-    .style("width", "50px");
 
-  // value label
+  // iso value label
   items
     .append("span")
-    .text((d, i) => isoValues[i].toFixed(2))
-    .style("width", "50px");
+      .attr("class", "isoValueText")
+    .text((d, i) => `Iso ${i} = `.concat(isoValues[i].toFixed(2), ","))
+    .style("width", "80px");
+
+  // alpha label
+  items
+    .append("span")
+      .attr("class", "isoAlphaText")
+    .text((d, i) => "alpha = ".concat(isoAlphas[i].toFixed(2)))
+    .style("width", "80px");
 
   // color picker with alpha support
   items
@@ -380,11 +355,6 @@ function drawHist(data) {
       // update dot
       dots.filter((p) => p === d).attr("fill", isoColors[index]);
 
-      // update slider accent color
-      controlDiv
-        .selectAll("input[type='range']")
-        .filter((_, i) => i === index)
-        .style("accent-color", isoColors[index]);
     });
 
 
