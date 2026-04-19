@@ -206,8 +206,38 @@ vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
     return vec4(color, 1);
 }
 
-vec4 MaxDencityImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
-    return vec4(0,0,0,0);
+vec4 MaxDencityImplementation(vec3 rayOrigin, vec3 rayDirection) {
+
+    // entry exit points
+    float tNear;
+    float tFar;
+    vec3 boxMin = -volumeSize / 2.0;
+    vec3 boxMax = volumeSize / 2.0;
+
+    if (!intersectRayAABB(boxMin, boxMax, tNear, tFar, rayOrigin, rayDirection))
+    {
+        discard;
+    }
+
+    // loop
+    float maxDensity = 0.0;
+
+    vec3 entryPosition = rayOrigin + rayDirection * tNear;
+    vec3 endPosition = rayOrigin + rayDirection * tFar;
+    vec3 startToEnd = endPosition - entryPosition;
+
+    int steps = 64;
+    for (int i = 0; i < steps; i++) {
+
+        vec3 samplePosition = entryPosition + startToEnd * float(i)/float(steps);
+
+        float value = texture(dataTexture, (samplePosition/volumeSize) +0.5).x;
+
+        if (value > maxDensity) {
+            maxDensity = value;
+        }
+    }
+    return vec4(maxDensity, maxDensity, maxDensity, 1.0);
 }
 
 
@@ -221,6 +251,6 @@ void main() {
         fragColor = FirstHitImplemnentation(rayOrigin, rayDirection);
     }
     else{
-        fragColor = MaxDencityImplemnentation(rayOrigin, rayDirection);
+        fragColor = MaxDencityImplementation(rayOrigin, rayDirection);
     }
 }

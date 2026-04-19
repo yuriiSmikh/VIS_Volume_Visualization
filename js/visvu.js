@@ -211,10 +211,12 @@ function drawHist(data) {
     .scaleLinear()
     .domain([0, 1])
     .range([height - margin.bottom, margin.top]);
-  const scaleHeight = d3.scaleLog(
-    [0.01, d3.max(bins, (d) => d.length)],
-    [0, height/3 - margin.bottom],
-  ).base(2);
+  const scaleHeight = d3
+    .scaleLog(
+      [0.01, d3.max(bins, (d) => d.length)],
+      [0, height / 3 - margin.bottom],
+    )
+    .base(2);
 
   // histogram
   svg
@@ -223,7 +225,7 @@ function drawHist(data) {
     .data(bins)
     .join("rect")
     .attr("x", (d) => scaleX(d.x0))
-    .attr("y", (d) => height - margin.bottom) // 
+    .attr("y", (d) => height - margin.bottom) //
     .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
     .attr("height", (d) => scaleHeight(d.length))
     .attr("fill", "#b00b55");
