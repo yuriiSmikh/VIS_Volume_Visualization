@@ -191,14 +191,16 @@ function drawHist(data) {
   const height = canvasHeight * 0.4;
 
   // remove previous SVG and UI
-  d3.select("#tfContainer").selectAll("svg").remove();
+  let svg = d3.select("#tfContainer").select("svg");
+  if (svg.empty()) {
+      svg = d3
+        .select("#tfContainer")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom);
+      svg.append("g").attr("class", "hist-bars")
+  }
   d3.select("#tfContainer").selectAll(".iso-controls").remove();
-
-  const svg = d3
-    .select("#tfContainer")
-    .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom);
 
   const bins = d3.bin().thresholds(100)(data);
 
@@ -218,15 +220,30 @@ function drawHist(data) {
 
   // histogram
   svg
-    .append("g")
+    .select(".hist-bars")
     .selectAll("rect")
     .data(bins)
-    .join("rect")
-    .attr("x", (d) => scaleX(d.x0))
-    .attr("y", (d) => height - margin.bottom) // 
-    .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
-    .attr("height", (d) => scaleHeight(d.length))
-    .attr("fill", "#b00b55");
+    .join(
+        enter => enter.append("rect")
+        .attr("x", (d) => scaleX(d.x0))
+        .attr("y", (d) => height - margin.bottom) //
+        .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
+        .attr("height", (d) => 0)
+        .attr("fill", "#b00b55"),
+        update => update,
+        exit => exit
+            .transition()
+                .duration(200)
+                .attr("height", 0)
+            .remove() // make them small and remove
+    )
+    .transition()
+      .duration(1000)
+      .attr("x", (d) => scaleX(d.x0))
+      .attr("y", (d) => height - margin.bottom)
+      .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
+      .attr("height", (d) => scaleHeight(d.length))
+
 
   // axes
   svg
