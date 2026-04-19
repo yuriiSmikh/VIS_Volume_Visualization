@@ -328,7 +328,13 @@ function drawHist(data) {
       dots
         .filter((d) => d === closest)
         .attr("cx", x)
-        .attr("cy", y);
+        .attr("cy", y)
+        .attr("fill-opacity", (d) => {
+            const i = points.indexOf(d)
+            isoAlphas[i] = scaleY.invert(d.y)
+            return isoAlphas[i]
+        }) // works
+
 
       const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
       const index = points.indexOf(closest);
@@ -383,24 +389,6 @@ function drawHist(data) {
         .style("accent-color", isoColors[index]);
     });
 
-  // alpha slider
-  items
-    .append("input")
-    .attr("type", "range")
-    .attr("min", 0)
-    .attr("max", 1)
-    .attr("step", 0.01)
-    .attr("value", (d, i) => isoAlphas[i] ?? 1.0)
-    .style("width", "80px")
-    .style("accent-color", (d, i) => isoColors[i])
-    .on("input", function (event, d) {
-      const index = points.indexOf(d);
-      isoAlphas[index] = parseFloat(event.target.value);
-
-      // update dot transparency
-      dots.filter((p) => p === d).attr("fill-opacity", isoAlphas[index]);
-      requestAnimationFrame(paint);
-    });
 
   // ADD / REMOVE buttons
   const buttons = controlDiv
