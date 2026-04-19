@@ -58,7 +58,8 @@ vec3 gradient(vec3 uvw)
     return normalize(vec3(dx, dy, dz));
 }
 
-vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
+vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection)
+{
 
     // entry exit points
     float tNear;
@@ -72,7 +73,7 @@ vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
     }
 
     // constants
-    const int maxSearchSteps = 128;
+    const int maxSearchSteps = 256;
     const int refinementSteps = 8;
     vec3 lightDirection = normalize(rayDirection);
 
@@ -110,22 +111,9 @@ vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
             {
                 float tMin = currT - step;
                 float tMax = currT;
-                float target = 0.5 * (tMin + tMax);
-                for (int j = 0; j < refinementSteps; j++)
-                {
-                    target = 0.5 * (tMin + tMax);
-                    sampleValue = sampleAtT(target, tNear, tFar, rayDirection, rayOrigin);
-                    if (sign(sampleValue - isoValues[i]) == sign(lastDifs[i]))
-                    {
-                        tMin = target;
-                    }
-                    else
-                    {
-                        tMax = target;
-                    }
-                }
+
                 hits[i] = true;
-                finalTs[i] = target;
+                finalTs[i] = mix(tMin, tMax, tMax-currT);
                 skips++;
             }
         }
@@ -206,8 +194,8 @@ vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
     return vec4(color, 1);
 }
 
-vec4 MaxDencityImplementation(vec3 rayOrigin, vec3 rayDirection) {
-
+vec4 MaxDencityImplementation(vec3 rayOrigin, vec3 rayDirection)
+{
     // entry exit points
     float tNear;
     float tFar;
