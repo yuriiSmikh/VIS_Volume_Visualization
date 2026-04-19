@@ -74,7 +74,7 @@ vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
     // constants
     const int maxSearchSteps = 128;
     const int refinementSteps = 8;
-    const vec3 lightDirection = vec3(0.71, 0.5, 0.22); // questionable name
+    vec3 lightDirection = normalize(rayDirection);
 
     float step = (tFar - tNear) / float(maxSearchSteps);
     float currT = tNear;
