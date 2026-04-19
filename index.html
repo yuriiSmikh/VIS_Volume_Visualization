@@ -31,6 +31,14 @@
 <!-- data selector -->
 <p>Select your data here: <input id="upload" type="file"></p>
 
+
+<label for="compositing">Select compositing method</label>
+<select name="compositingSelect" id="compositing">
+    <option value="mip">MIP</option> <!-- TODO: change the name of mip fragment shader to mip.essl-->
+    <option value="color_frag">First Hit</option>
+</select>
+
+
 <div class="container">
 
     <!-- volume rendering container -->
@@ -40,7 +48,6 @@
     <div id="tfContainer"></div>
 
 </div>
-
 
 
 </body>
