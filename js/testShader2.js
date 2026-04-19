@@ -4,6 +4,6 @@ class TestShader2 extends Shader {
     super("color_vert", "color_frag");
 
     this.setUniform("dataTexture", dataTexture);
-    this.setUniform("volumeSize", volumeSize);
+    this.setUniform("volumeResolution", volumeSize);
   }
 }
