@@ -30,7 +30,7 @@ let isoValues = [0.18, 0.3];
 let isoAlphas = [0.33, 1.0];
 let isoColors = ["#ff7f00", "#ffffff"];
 
-let firstHitSelectionBool = 1;
+let firstHitSelectionBool = 0;
 
 /**
  * Load all data and initialize UI here.
@@ -52,11 +52,8 @@ function init() {
 
   compositingSelection = document.getElementById("compositing");
   compositingSelection.addEventListener("change", (event) => {
-    resetVis();
-    let choice = event.target.value;
-
-    testShader.setUniform("firstHitSelection", choice == "firstHit");
-    console.log("Compisting choice:", choice);
+    firstHitSelectionBool = event.target.value == "firstHit";
+    requestAnimationFrame(paint);
   });
 }
 
@@ -153,6 +150,8 @@ function paint() {
       testMesh.matrixWorld.clone().invert(),
     );
 
+    testShader.setUniform("firstHitSelection", firstHitSelectionBool);
+
     testShader.setUniform("isoCount", isoValues.length);
 
     // NOTE: The array we pass to the gpu has to have exactly MAX_ISO elements.
@@ -193,17 +192,16 @@ function drawHist(data) {
   // remove previous SVG and UI
   let svg = d3.select("#tfContainer").select("svg");
   if (svg.empty()) {
-      svg = d3
-        .select("#tfContainer")
-        .append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom);
-      svg.append("g").attr("class", "hist-bars");
-  }
-  else {
-      // delete dots
-      svg.select(".circles").remove()
-      svg.select(".overlay").remove()
+    svg = d3
+      .select("#tfContainer")
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom);
+    svg.append("g").attr("class", "hist-bars");
+  } else {
+    // delete dots
+    svg.select(".circles").remove();
+    svg.select(".overlay").remove();
   }
   d3.select("#tfContainer").selectAll(".iso-controls").remove();
 
@@ -218,10 +216,12 @@ function drawHist(data) {
     .scaleLinear()
     .domain([0, 1])
     .range([height - margin.bottom, margin.top]);
-  const scaleHeight = d3.scaleLog(
-    [0.01, d3.max(bins, (d) => d.length)],
-    [0, height/3 - margin.bottom],
-  ).base(2);
+  const scaleHeight = d3
+    .scaleLog(
+      [0.01, d3.max(bins, (d) => d.length)],
+      [0, height / 3 - margin.bottom],
+    )
+    .base(2);
 
   // histogram
   svg
@@ -229,28 +229,26 @@ function drawHist(data) {
     .selectAll("rect")
     .data(bins)
     .join(
-        enter => enter.append("rect")
-        .attr("x", (d) => scaleX(d.x0))
-        .attr("y", (d) => height - margin.bottom) //
-        .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
-        .attr("height", (d) => 0)
-        .attr("fill", "#b00b55"),
-        update => update,
-        exit => exit
-            .transition()
-                .duration(200)
-                .attr("height", 0)
-            .remove() // make them small and remove
+      (enter) =>
+        enter
+          .append("rect")
+          .attr("x", (d) => scaleX(d.x0))
+          .attr("y", (d) => height - margin.bottom) //
+          .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
+          .attr("height", (d) => 0)
+          .attr("fill", "#b00b55"),
+      (update) => update,
+      (exit) => exit.transition().duration(200).attr("height", 0).remove(), // make them small and remove
     )
     .transition()
-      .duration(1000)
-      .attr("x", (d) => scaleX(d.x0))
-      .attr("y", (d) => height - margin.bottom)
-      .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
-      .attr("height", (d) => scaleHeight(d.length));
+    .duration(1000)
+    .attr("x", (d) => scaleX(d.x0))
+    .attr("y", (d) => height - margin.bottom)
+    .attr("width", (d) => scaleX(d.x1) - scaleX(d.x0))
+    .attr("height", (d) => scaleHeight(d.length));
 
   // axes
-    const axes = svg.append("g").attr("class", "axes")
+  const axes = svg.append("g").attr("class", "axes");
   axes
     .append("g")
     .attr("transform", `translate(0, ${height - margin.bottom})`)
@@ -270,7 +268,7 @@ function drawHist(data) {
 
   const dots = svg
     .append("g")
-      .attr("class", "circles")
+    .attr("class", "circles")
     .selectAll("circle")
     .data(points)
     .join("circle")
@@ -284,7 +282,7 @@ function drawHist(data) {
 
   const overlay = svg
     .append("rect")
-      .attr("class", "overlay")
+    .attr("class", "overlay")
     .attr("x", margin.left)
     .attr("y", margin.top)
     .attr("width", width - margin.left - margin.right)

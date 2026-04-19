@@ -9,7 +9,7 @@ precision highp sampler3D;
 out vec4 fragColor;
 
 uniform sampler3D dataTexture;
-uniform vec3 volumeSize; // for (2,2,2) -> (-1,-1,-1) and (1,1,1) corners
+uniform vec3 volumeResolution;
 uniform int isoCount;
 uniform int firstHitSelection;
 uniform float isoValues[4];
@@ -38,7 +38,7 @@ bool intersectRayAABB(vec3 boxMin, vec3 boxMax, out float tNear, out float tFar,
 float sampleAtT(float t, float tNear, float tFar, vec3 rayDirection, vec3 rayOrigin)
 {
     vec3 samplePosition = rayOrigin + rayDirection * t;
-    vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
+    vec3 uvw = (samplePosition - (-volumeResolution / 2.0)) / volumeResolution;
     float value = texture(dataTexture, uvw).r;
     return value;
 }
@@ -49,7 +49,7 @@ vec3 gradient(vec3 uvw)
     // given that the input point will lie around the edge of the density values,
     // the volume gradient will behave similarly to a normal vector and can be used for lighting.
 
-    vec3 h = vec3(1.0, 1.0, 1.0) / volumeSize;
+    vec3 h = vec3(1.0, 1.0, 1.0) / volumeResolution;
 
     float dx = texture(dataTexture, uvw + vec3(h.x,0,0)).r - texture(dataTexture, uvw - vec3(h.x,0,0)).r;
     float dy = texture(dataTexture, uvw + vec3(0,h.y,0)).r - texture(dataTexture, uvw - vec3(0,h.y,0)).r;
@@ -58,75 +58,84 @@ vec3 gradient(vec3 uvw)
     return normalize(vec3(dx, dy, dz));
 }
 
-vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
-
-    // entry exit points
+vec4 firstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection)
+{
     float tNear;
     float tFar;
-    vec3 boxMin = -volumeSize / 2.0;
-    vec3 boxMax = volumeSize / 2.0;
+    vec3 boxMin = -volumeResolution / 2.0;
+    vec3 boxMax = volumeResolution / 2.0;
 
     if (!intersectRayAABB(boxMin, boxMax, tNear, tFar, rayOrigin, rayDirection))
     {
         discard;
     }
 
-    // constants
-    const int maxSearchSteps = 128;
-    const int refinementSteps = 8;
-    const vec3 lightDirection = vec3(0.71, 0.5, 0.22); // questionable name
+    const int maxSearchSteps = 256;
+    vec3 lightDirection = normalize(rayDirection);
 
-    float step = (tFar - tNear) / float(maxSearchSteps);
+    vec3 invDir = 1.0 / abs(rayDirection);
+    vec3 voxelSize = volumeResolution / vec3(textureSize(dataTexture, 0));
+    vec3 tStepAxis = voxelSize * invDir;
+    float step = min(min(tStepAxis.x, tStepAxis.y), tStepAxis.z);
+
     float currT = tNear;
 
     float difs[4];
     float lastDifs[4];
-    float finalTs[4];
     bool hits[4];
-    int skips = 0;
-    float sampleValue = 0.0;
 
-    // init values;
-    sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
+    vec3 color = vec3(0.0);
+    float alphaAccum = 0.0;
+
+    float sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
+
     for (int i = 0; i < isoCount; i++) {
-        difs[i] = sampleValue - isoValues[i];
-        lastDifs[i] = difs[i];
+        lastDifs[i] = sampleValue - isoValues[i];
+        hits[i] = false;
     }
 
     for (int k = 0; k < maxSearchSteps; k++)
     {
-        if (currT > tFar) break;       // break when out of box
-        if (skips >= isoCount) break; //  or break when found all iso-boundaries
+        if (currT > tFar) break;
+        if (alphaAccum > 0.95) break;
 
         currT += step;
         sampleValue = sampleAtT(currT, tNear, tFar, rayDirection, rayOrigin);
+
         for (int i = 0; i < isoCount; i++)
         {
-            if (hits[i]) continue; // if we already determined value for this isoValue -> skip
+            if (hits[i]) continue;
 
             difs[i] = sampleValue - isoValues[i];
 
-            if (sign(difs[i]) != sign(lastDifs[i])) // walked past the isoValue, search exact boundary
+            if (sign(difs[i]) != sign(lastDifs[i]))
             {
                 float tMin = currT - step;
                 float tMax = currT;
-                float target = 0.5 * (tMin + tMax);
-                for (int j = 0; j < refinementSteps; j++)
-                {
-                    target = 0.5 * (tMin + tMax);
-                    sampleValue = sampleAtT(target, tNear, tFar, rayDirection, rayOrigin);
-                    if (sign(sampleValue - isoValues[i]) == sign(lastDifs[i]))
-                    {
-                        tMin = target;
-                    }
-                    else
-                    {
-                        tMax = target;
-                    }
-                }
+                float hitT = 0.5 * (tMin + tMax);
+
+                vec3 samplePosition = rayOrigin + rayDirection * hitT;
+                vec3 uvw = (samplePosition - (-volumeResolution / 2.0)) / volumeResolution;
+
+                vec3 N = normalize(gradient(uvw));
+                vec3 L = normalize(lightDirection);
+                vec3 V = normalize(-rayDirection);
+                vec3 R = reflect(-L, N);
+
+                float diff = max(dot(N, L), 0.0);
+                float spec = pow(max(dot(R, V), 0.0), 16.0);
+
+                float light = 0.1 + diff + 0.25 * spec;
+
+                vec3 srcColor = isoColors[i].rgb * light;
+                float alpha = isoColors[i].a;
+
+                color += (1.0 - alphaAccum) * srcColor * alpha;
+                alphaAccum += (1.0 - alphaAccum) * alpha;
+
                 hits[i] = true;
-                finalTs[i] = target;
-                skips++;
+
+                if (alphaAccum > 0.95) break;
             }
         }
 
@@ -135,84 +144,18 @@ vec4 FirstHitImplemnentation(vec3 rayOrigin, vec3 rayDirection) {
         }
     }
 
-    if (skips == 0) discard;
+    if (alphaAccum <= 0.01) discard;
 
-    //NOTE In order to properly compose the layers, we need to sort them by accending hit depth
-    //     Sorting on gpu ins't a good idea generally, but it should be fine for a small n
-
-    int indices[4];
-    int count = 0;
-
-    // collect valid hits
-    for (int i = 0; i < isoCount; i++) {
-        if (hits[i]) {
-            indices[count++] = i;
-        }
-    }
-
-    // sort by depth: nearest → farthest (ascending t)
-    // NOTE insertion sort is used because n is small, it doesn't involve recursion and doesn't require additional allocations
-    for (int i = 1; i < count; i++) {
-        int key = indices[i];
-        float keyT = finalTs[key];
-
-        int j = i - 1;
-        while (j >= 0 && finalTs[indices[j]] > keyT) {
-            indices[j + 1] = indices[j];
-            j--;
-        }
-        indices[j + 1] = key;
-    }
-
-    vec3 color = vec3(0.0);
-    float alphaAccum = 0.0;
-    for (int k = 0; k < count; k++)
-    {
-        int i = indices[k];
-
-        vec3 samplePosition = rayOrigin + rayDirection * finalTs[i];
-        vec3 uvw = (samplePosition - (-volumeSize / 2.0)) / volumeSize;
-
-        // phong shading
-        vec3 N = normalize(gradient(uvw)); //surface normal
-        vec3 L = normalize(lightDirection);//light direction
-        vec3 V = normalize(-rayDirection); //view direction
-        vec3 R = reflect(-L, N); // reflected light direction
-
-        float ambientStrength = 0.1;
-        float diffuseStrength = 1.0;
-        float specularStrength = 0.25;
-        float shininess = 16.0;
-
-        float diff = max(dot(N, L), 0.0);
-        float spec = pow(max(dot(R, V), 0.0), shininess);
-
-        float light =
-        ambientStrength
-        + diffuseStrength * diff
-        + specularStrength * spec;
-
-        vec3 srcColor = isoColors[i].rgb * light;
-        float alpha = isoColors[i].a;
-
-        // front-to-back compositing
-        color += (1.0 - alphaAccum) * srcColor * alpha;
-        alphaAccum += (1.0 - alphaAccum) * alpha;
-
-        // early exit
-        if (alphaAccum > 0.95) break;
-    }
-
-    return vec4(color, 1);
+    return vec4(color, 1.0);
 }
 
-vec4 MaxDencityImplementation(vec3 rayOrigin, vec3 rayDirection) {
-
+vec4 maxDencityImplementation(vec3 rayOrigin, vec3 rayDirection)
+{
     // entry exit points
     float tNear;
     float tFar;
-    vec3 boxMin = -volumeSize / 2.0;
-    vec3 boxMax = volumeSize / 2.0;
+    vec3 boxMin = -volumeResolution / 2.0;
+    vec3 boxMax = volumeResolution / 2.0;
 
     if (!intersectRayAABB(boxMin, boxMax, tNear, tFar, rayOrigin, rayDirection))
     {
@@ -231,7 +174,7 @@ vec4 MaxDencityImplementation(vec3 rayOrigin, vec3 rayDirection) {
 
         vec3 samplePosition = entryPosition + startToEnd * float(i)/float(steps);
 
-        float value = texture(dataTexture, (samplePosition/volumeSize) +0.5).x;
+        float value = texture(dataTexture, (samplePosition/volumeResolution) +0.5).x;
 
         if (value > maxDensity) {
             maxDensity = value;
@@ -240,17 +183,15 @@ vec4 MaxDencityImplementation(vec3 rayOrigin, vec3 rayDirection) {
     return vec4(maxDensity, maxDensity, maxDensity, 1.0);
 }
 
-
 void main() {
 
     vec3 rayOrigin = (inverseModelMat * vec4(cameraPosition, 1.0)).xyz;
     vec3 rayDirection = normalize(position_obj - rayOrigin);
 
-
     if(firstHitSelection == 1){
-        fragColor = FirstHitImplemnentation(rayOrigin, rayDirection);
+        fragColor = firstHitImplemnentation(rayOrigin, rayDirection);
     }
     else{
-        fragColor = MaxDencityImplementation(rayOrigin, rayDirection);
+        fragColor = maxDencityImplementation(rayOrigin, rayDirection);
     }
 }
