@@ -307,12 +307,11 @@ function drawHist(data) {
         .attr("cy", y)
         .attr("fill-opacity", isoAlpha);
 
-      d3.select("span.isoValueText").text((d, i) =>
-        `Iso ${i} = `.concat(iso.toFixed(2), ","),
-      );
-      d3.select("span.isoAlphaText").text(
-        "alpha = ".concat(isoAlpha.toFixed(2)),
-      );
+      d3.select(`#isovalue${index}`)
+          .text(`Iso ${index} = ${iso.toFixed(2)}, `);
+      d3.select(`#isoalpha${index}`)
+          .text(`alpha = ${isoAlpha.toFixed(2)}`);
+
       updateIso(index, iso);
     })
     .on("end", function (event, d) {
@@ -340,14 +339,14 @@ function drawHist(data) {
   // iso value label
   items
     .append("span")
-    .attr("class", "isoValueText")
-    .text((d, i) => `Iso ${i} = `.concat(isoValues[i].toFixed(2), ","))
+      .attr("id", (data, i) => `isovalue${i}`)
+    .text((d, i) => `Iso ${i} = ${isoValues[i].toFixed(2)}, `)
     .style("width", "80px");
 
   // alpha label
   items
     .append("span")
-    .attr("class", "isoAlphaText")
+      .attr("id", (data, i) => `isoalpha${i}`)
     .text((d, i) => "alpha = ".concat(isoAlphas[i].toFixed(2)))
     .style("width", "80px");
 
