@@ -5,6 +5,8 @@ Rotate the orbit camera around the bounding box using the left mouse button. Zoo
 
 The editor allows for adding aditional densities (ISO) and their alpha values. So for example you could render the bones as non-transparent and the skin - somewhat transparent. The sliders will have thei color of their corresponding layer.
 
+We have tested the functional aspect of our editor and we are aware of bad performance and occasional stutters. This course focuses on the 3D volume visualization and not on the performance aspect.
+
 ## Framework Description
 
 This framework uses three.js and d3.js for volume rendering and setting the appearance, respectively. 
@@ -45,4 +47,4 @@ Recommended code editor: Visual Studio Code (free): https://code.visualstudio.co
 
 Install syntax highlighting for shading languages: https://marketplace.visualstudio.com/items?itemName=slevesque.shader
 
-Enable syntax highlighting: open shader file --> in the bar on the bottom right, switch from plain text to GLSL.  
+Enable syntax highlighting: open shader file --> in the bar on the bottom right, switch from plain text to GLSL.
