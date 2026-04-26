@@ -280,37 +280,46 @@ function drawHist(data) {
     .attr("stroke", (d, i) => isoColors[i])
     .style("cursor", "pointer");
 
+  const drag = d3
+    .drag()
+    .on("start", function (event, d) {
+      d3.select(this)
+        .raise()
+        .interrupt()
+        .transition()
+        .duration(100)
+        .attr("r", 12);
+    })
+    .on("drag", function (event, d) {
+      const x = Math.max(margin.left, Math.min(width - margin.right, event.x));
+      const y = Math.max(margin.top, Math.min(height - margin.bottom, event.y));
 
-  const drag = d3.drag()
-      .on("start", function(event, d) {
-          d3.select(this).raise().interrupt().transition().duration(100).attr("r", 12)
-      })
-      .on("drag", function(event, d) {
-            const x = Math.max(margin.left, Math.min(width - margin.right, event.x));
-            const y = Math.max(margin.top, Math.min(height - margin.bottom, event.y));
+      d.x = x;
+      d.y = y;
 
-            d.x = x;
-            d.y = y;
+      const index = points.indexOf(d);
+      const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
+      const isoAlpha = Math.max(0, Math.min(1, scaleY.invert(y)));
+      isoAlphas[index] = isoAlpha;
 
-            const index = points.indexOf(d);
-            const iso = Math.max(0.0, Math.min(1.0, scaleX.invert(x)));
-            const isoAlpha = Math.max(0, Math.min(1, scaleY.invert(y)))
-            isoAlphas[index] = isoAlpha
+      d3.select(this)
+        .attr("cx", x)
+        .attr("cy", y)
+        .attr("fill-opacity", isoAlpha);
 
-            d3.select(this).attr("cx", x).attr("cy", y)
-            .attr("fill-opacity", isoAlpha)
+      d3.select("span.isoValueText").text((d, i) =>
+        `Iso ${i} = `.concat(iso.toFixed(2), ","),
+      );
+      d3.select("span.isoAlphaText").text(
+        "alpha = ".concat(isoAlpha.toFixed(2)),
+      );
+      updateIso(index, iso);
+    })
+    .on("end", function (event, d) {
+      d3.select(this).transition().duration(50).attr("r", 8);
+    });
 
-            d3.select("span.isoValueText").text((d, i) => `Iso ${i} = `.concat(iso.toFixed(2), ",")
-)
-            d3.select("span.isoAlphaText").text("alpha = ".concat(isoAlpha.toFixed(2)))
-            updateIso(index, iso);
-      })
-      .on("end", function (event, d) {
-          d3.select(this).transition().duration(50).attr("r", 8)
-      })
-
-    dots.call(drag)
-
+  dots.call(drag);
 
   // --- CONTROL LIST UI ---
   const controlDiv = d3
@@ -328,18 +337,17 @@ function drawHist(data) {
     .style("gap", "10px")
     .style("margin-bottom", "6px");
 
-
   // iso value label
   items
     .append("span")
-      .attr("class", "isoValueText")
+    .attr("class", "isoValueText")
     .text((d, i) => `Iso ${i} = `.concat(isoValues[i].toFixed(2), ","))
     .style("width", "80px");
 
   // alpha label
   items
     .append("span")
-      .attr("class", "isoAlphaText")
+    .attr("class", "isoAlphaText")
     .text((d, i) => "alpha = ".concat(isoAlphas[i].toFixed(2)))
     .style("width", "80px");
 
@@ -354,9 +362,9 @@ function drawHist(data) {
 
       // update dot
       dots.filter((p) => p === d).attr("fill", isoColors[index]);
-
+      // update rest of the frame
+      requestAnimationFrame(paint);
     });
-
 
   // ADD / REMOVE buttons
   const buttons = controlDiv
