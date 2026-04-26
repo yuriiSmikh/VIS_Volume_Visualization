@@ -3,7 +3,11 @@
 Load one of the provided volume files through the GUI. 
 Rotate the orbit camera around the bounding box using the left mouse button. Zoom using the scroll wheel. 
 
-The editor allows for adding aditional densities (ISO) and their alpha values. So for example you could render the bones as non-transparent and the skin - somewhat transparent. The sliders will have thei color of their corresponding layer.
+On the left there are 2 fields, one is to choose the input file and the other dropdown is to choose the composing method. 
+
+- For the Maximum intensity those input fields on the right wont have any affect.
+
+- For the First Hit Composing the editor allows for selecting material layers based on their ISO value. So for example you could render the bones as non-transparent and the skin - somewhat transparent and so see both those "materials" on the object. You can set those layers (as suggested during the tutoring session) using the the points on the histogramme. Its x axis is the density of the layer that we want to render and y is the alpha channel. You can add and delete layers in the table under the histogramme.
 
 We have tested the functional aspect of our editor and we are aware of bad performance and occasional stutters. This course focuses on the 3D volume visualization and not on the performance aspect.
 
