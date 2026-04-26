@@ -7,6 +7,9 @@ The editor allows for adding aditional densities (ISO) and their alpha values. S
 
 We have tested the functional aspect of our editor and we are aware of bad performance and occasional stutters. This course focuses on the 3D volume visualization and not on the performance aspect.
 
+To see our progression on the project and commit history: 
+https://github.com/yuriiSmikh/VIS_Volume_Visualization
+
 ## Framework Description
 
 This framework uses three.js and d3.js for volume rendering and setting the appearance, respectively. 
